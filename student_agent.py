@@ -289,7 +289,7 @@ from mcts import MCTS, TreeNode
 import pickle
 
 approximator = pickle.load(open("converted_model.pkl", "rb"))
-global_mcts = MCTS(env, approximator, iterations=100, exploration_constant=1.41, rollout_depth=0, gamma=1)
+global_mcts = MCTS(env, approximator, iterations=1000, exploration_constant=1.41, rollout_depth=0, gamma=1)
 global_root = None
 last_score = 0
 
