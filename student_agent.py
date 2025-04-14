@@ -308,9 +308,6 @@ def get_action(state, score):
     for _ in range(global_mcts.iterations):
         global_mcts.run_simulation(global_root, env.score)
     best_act, action_distribution = global_mcts.best_action_distribution(global_root)
-    print("State:", state, "Score:", score)
-    print("Best action:", best_act, "Action distribution:", action_distribution)
-
     global_root = global_root.children[best_act]  
     global_root.parent = None
     return best_act 
