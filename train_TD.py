@@ -9,8 +9,6 @@ import math
 import os
 from env import Game2048Env
 
-import psutil
-
 def print_memory_usage():
     process = psutil.Process(os.getpid())
     mem = process.memory_info().rss / 1024 / 1024  # 轉 MB
@@ -243,8 +241,6 @@ def train_stage(env, approximator, stage, samples, num_episodes, alpha, collect_
             avg_score = np.mean(final_scores[-100:])
             max_score = np.max(final_scores[-100:])
             advance_rate = advance / (episode + 1)
-            print_memory_usage()
-            
             print(f"Stage {stage+1} - Episode {episode+1}/{num_episodes} | Max Score {max_score} | Average Score: {avg_score:.2f} | Advance Rate: {advance_rate:.2f} | Max Tile: {max(max_tiles[-100:])} | Avg Max Tile: {np.mean(max_tiles[-100:]):.2f}")
             print(f"Collected {len(next_stage_samples)} Next Stage Samples")
         if (episode + 1) % 2000 == 0:
