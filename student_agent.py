@@ -8,7 +8,20 @@ import matplotlib.pyplot as plt
 import copy
 import random
 import math
+import copy
 
+# Add color maps for rendering
+COLOR_MAP = {
+    0: "#cdc1b4", 2: "#eee4da", 4: "#ede0c8", 8: "#f2b179",
+    16: "#f59563", 32: "#f67c5f", 64: "#f65e3b", 128: "#edcf72",
+    256: "#edcc61", 512: "#edc850", 1024: "#edc53f", 2048: "#edc22e",
+    4096: "#3c3a32", 8192: "#3c3a32", 16384: "#3c3a32", 32768: "#3c3a32"
+}
+TEXT_COLOR = {
+    2: "#776e65", 4: "#776e65", 8: "#f9f6f2", 16: "#f9f6f2",
+    32: "#f9f6f2", 64: "#f9f6f2", 128: "#f9f6f2", 256: "#f9f6f2",
+    512: "#f9f6f2", 1024: "#f9f6f2", 2048: "#f9f6f2", 4096: "#f9f6f2"
+}
 
 class Game2048Env(gym.Env):
     def __init__(self):
@@ -156,6 +169,30 @@ class Game2048Env(gym.Env):
 
         return self.board, self.score, done, {}
 
+    def step_no_random_tile(self, action):
+        """Execute one action without adding a random tile"""
+        if action == 0:
+            moved = self.move_up()
+        elif action == 1:
+            moved = self.move_down()
+        elif action == 2:
+            moved = self.move_left()
+        elif action == 3:
+            moved = self.move_right()
+
+        done = self.is_game_over()
+
+        return self.board, self.score, done, {}
+    
+    def set(self, board, score):
+        """Set the board state and score"""
+        self.board = board
+        self.score = score
+    
+    def get_empty_cells(self):
+        """Get list of empty cells on the board"""
+        return list(zip(*np.where(self.board == 0)))
+
     def render(self, mode="human", action=None):
         """
         Render the current board using Matplotlib.
@@ -183,7 +220,21 @@ class Game2048Env(gym.Env):
             title += f" | action: {self.actions[action]}"
         plt.title(title)
         plt.gca().invert_yaxis()
-        plt.show()
+        
+        if mode == "human":
+            plt.show()
+        elif mode == "rgb_array":
+            # Convert canvas to NumPy array
+            fig.canvas.draw()
+            image = np.array(fig.canvas.renderer.buffer_rgba())
+            plt.close(fig)  # Close figure to save memory
+            return image
+            
+    def clone(self):
+        """Create a deep copy of the current environment"""
+        cloned = Game2048Env()
+        cloned.set(self.board.copy(), self.score)
+        return cloned
 
     def simulate_row_move(self, row):
         """Simulate a left move for a single row"""
@@ -231,10 +282,35 @@ class Game2048Env(gym.Env):
         # If the simulated board is different from the current board, the move is legal
         return not np.array_equal(self.board, temp_board)
 
+# Import MCTS implementation
+env = Game2048Env()
+from mcts import MCTS, TreeNode
+#from approximator import NTupleApproximator
+import pickle
+
+approximator = pickle.load(open("converted_model.pkl", "rb"))
+global_mcts = MCTS(env, approximator, iterations=1000, exploration_constant=1.41, rollout_depth=0, gamma=1)
+global_root = None
+last_score = 0
+
 def get_action(state, score):
-    env = Game2048Env()
-    return random.choice([0, 1, 2, 3]) # Choose a random action
-    
-    # You can submit this random agent to evaluate the performance of a purely random strategy.
 
+    global global_root, global_mcts, last_score, approximator, env
+    last_score = score
+    env.set(state.copy(), score)
+    if global_root is None or last_score > score:
+        global_root = TreeNode(state, score, is_max_node=True)
+    else: 
+        if (tuple(map(tuple, state)), env.score) not in  global_root.children:
+            global_root.children[(tuple(map(tuple, state)), env.score)] = TreeNode(env.board.copy(), env.score, parent=global_root, is_max_node=True)
+        global_root =  global_root.children[(tuple(map(tuple, state)), env.score)]  
 
+    for _ in range(global_mcts.iterations):
+        global_mcts.run_simulation(global_root, env.score)
+    best_act, action_distribution = global_mcts.best_action_distribution(global_root)
+    print("State:", state, "Score:", score)
+    print("Best action:", best_act, "Action distribution:", action_distribution)
+
+    global_root = global_root.children[best_act]  
+    global_root.parent = None
+    return best_act 
