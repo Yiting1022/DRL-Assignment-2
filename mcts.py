@@ -413,7 +413,7 @@ class MCTS:
 
 def run(env, approximator):
     state = env.reset()
-    td_mcts = MCTS(env, approximator, iterations=100, exploration_constant=1.41, rollout_depth=0, gamma=1)
+    td_mcts = MCTS(env, approximator, iterations=1000, exploration_constant=1.41, rollout_depth=0, gamma=1)
     done = False
     root = TreeNode(state, env.score, is_max_node=True)
     while not done:
